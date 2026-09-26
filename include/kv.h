@@ -9,5 +9,6 @@ typedef struct KVEntry KVEntry;
 typedef struct KVStore KVStore;
 
 KVStore *kv_create(void);
+void kv_destroy(KVStore *kvstore);
 
 #endif
