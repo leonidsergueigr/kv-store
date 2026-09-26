@@ -19,7 +19,7 @@ KVStore *kv_create(void){
     KVStore *kvstore = malloc(sizeof *kvstore);
     if (kvstore == NULL)
         return NULL;
-    kvstore->entries = malloc(INITIAL_CAPACITY * sizeof *kvstore->entries);
+    kvstore->entries = calloc(INITIAL_CAPACITY, sizeof *kvstore->entries);
     if (kvstore->entries == NULL) {
         free(kvstore);
         return NULL;
@@ -27,4 +27,16 @@ KVStore *kv_create(void){
     kvstore->size = 0;
     kvstore->capacity = INITIAL_CAPACITY;
     return kvstore;
-};
+}
+
+
+void kv_destroy(KVStore *kvstore) {
+    if (kvstore == NULL)
+        return;
+    for (size_t i = 0; i < kvstore->size; i++) {
+        free(kvstore->entries[i].key);
+        free(kvstore->entries[i].value);
+    }
+    free(kvstore->entries);
+    free(kvstore);
+}
