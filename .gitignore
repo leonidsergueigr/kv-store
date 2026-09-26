@@ -1,0 +1,51 @@
+# Prerequisites
+*.d
+
+# Object files
+*.o
+*.obj
+*.lo
+*.ko
+
+# Static / shared libraries
+*.a
+*.lib
+*.so
+*.so.*
+*.dylib
+*.dll
+
+# Executables
+kv-store
+kvstore
+src/kv-store
+src/kvstore
+*.exe
+*.out
+a.out
+
+# Debug / coverage artifacts
+*.gcda
+*.gcno
+*.gcov
+*.dSYM/
+vgcore.*
+core
+core.*
+
+# CMake
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+build/
+cmake-build-*/
+
+# IDE / editor
+.vscode/
+.idea/
+*.swp
+*~
+
+# Misc
+*.log
+tmp/
