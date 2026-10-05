@@ -63,7 +63,7 @@ void kv_destroy(KVStore *kvstore) {
     free(kvstore);
 }
 
-KVEntry *kv_find(KVStore *store, const char *key){
+static KVEntry *kv_find(KVStore *store, const char *key){
     for (size_t i = 0; i < store->size; i++){
         if (strcmp(store->entries[i].key, key) == 0){
             return &store->entries[i];
@@ -97,4 +97,25 @@ KVStatus kv_set(KVStore *store, const char *key, const char *value){
         entry->value = new_value;
         return KV_OK;
     }
+}
+
+char *kv_get(KVStore *store, const char *key){
+    if (store == NULL || key == NULL) return NULL;
+    KVEntry *entry = kv_find(store, key);
+    if (entry == NULL) return NULL;
+    return entry->value;
+}
+
+
+KVStatus kv_delete(KVStore *store, const char *key){
+    if (store == NULL || key == NULL) return KV_INVALID_ARGUMENT;
+    KVEntry *entry = kv_find(store, key);
+    if (entry == NULL) return KV_KEY_NOT_FOUND;
+    int removed_idx = entry - store->entries;
+    size_t n_to_move = store->size - removed_idx - 1;
+    free(entry->key);
+    free(entry->value);
+    memmove(&store->entries[removed_idx], &store->entries[removed_idx + 1], n_to_move * sizeof(KVEntry));
+    store->size--;
+    return KV_OK;
 }
