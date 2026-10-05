@@ -20,6 +20,7 @@ typedef enum {
 KVStore *kv_create(void);
 void kv_destroy(KVStore *kvstore);
 KVStatus kv_set(KVStore *store, const char *key, const char *value);
-KVEntry *kv_find(KVStore *store, const char *key);
+char *kv_get(KVStore *store, const char *key);
+KVStatus kv_delete(KVStore *store, const char *key);
 
 #endif
