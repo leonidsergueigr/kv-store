@@ -6,12 +6,12 @@ BUILD_DIR := build
 APP       := $(BUILD_DIR)/kv-store
 TEST_BIN  := $(BUILD_DIR)/test_kv
 
-LIB_SRCS  := src/kv.c
 APP_SRCS  := src/main.c
-TEST_SRCS := tests/test_kv.c
-HEADERS   := include/kv.h
+LIB_SRCS  := $(filter-out $(APP_SRCS), $(wildcard src/*.c))
+TEST_SRCS := $(wildcard tests/*.c)
+HEADERS   := $(wildcard include/*.h)
 
-.PHONY: all test clean
+.PHONY: all run test clean
 
 all: $(APP)
 
@@ -22,6 +22,9 @@ $(APP): $(APP_SRCS) $(LIB_SRCS) $(HEADERS)
 $(TEST_BIN): $(TEST_SRCS) $(LIB_SRCS) $(HEADERS)
 	@mkdir -p $(BUILD_DIR)
 	$(CC) $(CFLAGS) $(CPPFLAGS) $(TEST_SRCS) $(LIB_SRCS) -o $@
+
+run: $(APP)
+	$(APP)
 
 test: $(TEST_BIN)
 	$(TEST_BIN)
