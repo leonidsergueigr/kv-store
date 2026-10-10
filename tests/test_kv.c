@@ -133,6 +133,68 @@ static void test_set_invalid(void) {
     kv_destroy(store);
 }
 
+typedef struct {
+    unsigned calls;
+    char keys[8][32];
+    char values[8][32];
+} ForeachCapture;
+
+static ForeachCapture g_capture;
+
+static void capture_entry(const char *key, const char *value) {
+    if (g_capture.calls < 8) {
+        snprintf(g_capture.keys[g_capture.calls], sizeof g_capture.keys[0], "%s", key);
+        snprintf(g_capture.values[g_capture.calls], sizeof g_capture.values[0], "%s", value);
+    }
+    g_capture.calls++;
+}
+
+static void test_foreach(void) {
+    KVStore *store = kv_create();
+    CHECK(store != NULL);
+
+    memset(&g_capture, 0, sizeof g_capture);
+
+    /* store vide : aucune iteration */
+    kv_foreach(store, capture_entry);
+    CHECK(g_capture.calls == 0);
+
+    CHECK(kv_set(store, "a", "1") == KV_OK);
+    CHECK(kv_set(store, "b", "2") == KV_OK);
+    CHECK(kv_set(store, "c", "3") == KV_OK);
+
+    /* l'ordre suit l'ordre d'insertion */
+    kv_foreach(store, capture_entry);
+    CHECK(g_capture.calls == 3);
+    CHECK(strcmp(g_capture.keys[0], "a") == 0);
+    CHECK(strcmp(g_capture.values[0], "1") == 0);
+    CHECK(strcmp(g_capture.keys[1], "b") == 0);
+    CHECK(strcmp(g_capture.values[1], "2") == 0);
+    CHECK(strcmp(g_capture.keys[2], "c") == 0);
+    CHECK(strcmp(g_capture.values[2], "3") == 0);
+
+    /* une mise a jour ne change pas le nombre d'entrees */
+    CHECK(kv_set(store, "a", "10") == KV_OK);
+    kv_foreach(store, capture_entry);
+    CHECK(g_capture.calls == 6);
+    CHECK(strcmp(g_capture.keys[3], "a") == 0);
+    CHECK(strcmp(g_capture.values[3], "10") == 0);
+
+    kv_destroy(store);
+}
+
+static void test_foreach_null(void) {
+    KVStore *store = kv_create();
+    CHECK(store != NULL);
+
+    /* robustesse : ne doit pas planter sur des arguments nuls */
+    kv_foreach(NULL, capture_entry);
+    kv_foreach(store, NULL);
+    kv_foreach(NULL, NULL);
+
+    kv_destroy(store);
+}
+
 int main(void) {
     test_create_destroy();
     test_set_get();
@@ -142,6 +204,8 @@ int main(void) {
     test_delete();
     test_delete_errors();
     test_set_invalid();
+    test_foreach();
+    test_foreach_null();
 
     printf("%u verifications, %u echecs\n", g_checks, g_failures);
     return g_failures == 0 ? 0 : 1;
