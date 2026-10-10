@@ -14,10 +14,20 @@ CommandType get_command_type(const char *cmd){
     return CMD_INVALID;
 }
 
-static char *skip_spaces(char *cursor){
-    if (*cursor == ' ' || *cursor == '\t')
+char *skip_spaces(char *cursor){
+    if (cursor == NULL) return NULL;
+    while (*cursor == ' ' || *cursor == '\t')
     {
         cursor++;
+    }
+    return cursor;
+}
+
+char *get_remaining_text(char *cursor){
+    if (cursor == NULL) return NULL;
+    cursor = skip_spaces(cursor);
+    if (*cursor == '\0'){
+        return NULL;
     }
     return cursor;
 }

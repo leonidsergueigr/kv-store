@@ -111,11 +111,18 @@ KVStatus kv_delete(KVStore *store, const char *key){
     if (store == NULL || key == NULL) return KV_INVALID_ARGUMENT;
     KVEntry *entry = kv_find(store, key);
     if (entry == NULL) return KV_KEY_NOT_FOUND;
-    int removed_idx = entry - store->entries;
+    ptrdiff_t removed_idx = entry - store->entries;
     size_t n_to_move = store->size - removed_idx - 1;
     free(entry->key);
     free(entry->value);
     memmove(&store->entries[removed_idx], &store->entries[removed_idx + 1], n_to_move * sizeof(KVEntry));
     store->size--;
     return KV_OK;
+}
+
+void kv_foreach(const KVStore *store, KVCallback callback){
+    if (store == NULL || callback == NULL) return;
+    for (size_t i = 0; i < store->size; i++){
+        callback(store->entries[i].key, store->entries[i].value);
+    }
 }
