@@ -22,6 +22,7 @@ void kv_destroy(KVStore *kvstore);
 KVStatus kv_set(KVStore *store, const char *key, const char *value);
 char *kv_get(KVStore *store, const char *key);
 KVStatus kv_delete(KVStore *store, const char *key);
-
+typedef void (*KVCallback)(const char *key, const char *value);
+void kv_foreach(const KVStore *store, KVCallback callback);
 
 #endif

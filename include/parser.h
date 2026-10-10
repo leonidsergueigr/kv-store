@@ -11,5 +11,7 @@ typedef enum CommandType {
 } CommandType;
 
 char* get_current_word(char **cursor);
+char *skip_spaces(char *cursor);
 CommandType get_command_type(const char *cmd);
+char *get_remaining_text(char *cursor);
 #endif
