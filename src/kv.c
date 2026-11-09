@@ -1,128 +1,208 @@
 #include "kv.h"
+#include <stdbool.h>
+#include <stddef.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stddef.h>
 
 typedef struct KVEntry {
-    char *key;
-    char *value;
+  char *key;
+  char *value;
+  struct KVEntry *next;
 } KVEntry;
 
 typedef struct KVStore {
-    KVEntry *entries;
-    size_t size;
-    size_t capacity;
+  KVEntry **buckets;
+  size_t size;
+  size_t capacity;
 } KVStore;
 
+bool hash_string(const char *s, uint64_t *result) {
+  if (s == NULL) {
+    return false;
+  }
+  uint64_t hash = 14695981039346656037ULL;
+  while (*s) {
+    hash ^= (unsigned char)*s;
+    hash *= 1099511628211ULL;
+    s++;
+  }
+  *result = hash;
+  return true;
+}
 
-static KVStatus kv_ensure_capacity(KVStore *store){
-    if (store->size < store->capacity) return KV_OK;
-    size_t new_cap = (store->capacity == 0)? INITIAL_CAPACITY : store->capacity *2;
-    KVEntry *tmp = realloc(store->entries, new_cap * sizeof *tmp);
-    if (tmp == NULL){
-        return KV_MEMORY_ERROR;
-    }
-    store->entries = tmp;
-    store->capacity = new_cap;
+static KVStatus kv_ensure_capacity(KVStore *store) {
+  if (store->size < store->capacity)
     return KV_OK;
-}
-
-
-static char *kv_strdup(const char *s){
-    if (s == NULL) return NULL;
-    size_t n = strlen(s) + 1;
-    char *copy = malloc(n);
-    if (copy == NULL) return NULL;
-    memcpy(copy, s, n);
-    return copy;
-}
-
-KVStore *kv_create(void){
-    KVStore *kvstore = malloc(sizeof *kvstore);
-    if (kvstore == NULL)
-        return NULL;
-    kvstore->entries = calloc(INITIAL_CAPACITY, sizeof *kvstore->entries);
-    if (kvstore->entries == NULL) {
-        free(kvstore);
-        return NULL;
+  size_t new_cap =
+      (store->capacity == 0) ? INITIAL_CAPACITY : store->capacity * 2;
+  KVEntry **new_buckets = calloc(new_cap, sizeof *new_buckets);
+  if (new_buckets == NULL)
+    return KV_MEMORY_ERROR;
+  for (size_t i = 0; i < store->capacity; i++) {
+    KVEntry *entry = store->buckets[i];
+    while (entry != NULL) {
+      uint64_t hash;
+      if (!hash_string(entry->key, &hash)) {
+        return KV_HASH_ERROR;
+      }
+      KVEntry *suivant = entry->next;
+      size_t new_index = hash % new_cap;
+      entry->next = new_buckets[new_index];
+      new_buckets[new_index] = entry;
+      entry = suivant;
     }
-    kvstore->size = 0;
-    kvstore->capacity = INITIAL_CAPACITY;
-    return kvstore;
+  }
+  free(store->buckets);
+  store->buckets = new_buckets;
+  store->capacity = new_cap;
+  return KV_OK;
 }
 
+static char *kv_strdup(const char *s) {
+  if (s == NULL)
+    return NULL;
+  size_t n = strlen(s) + 1;
+  char *copy = malloc(n);
+  if (copy == NULL)
+    return NULL;
+  memcpy(copy, s, n);
+  return copy;
+}
+
+KVStore *kv_create(void) {
+  KVStore *kvstore = malloc(sizeof *kvstore);
+  if (kvstore == NULL)
+    return NULL;
+  kvstore->buckets = calloc(INITIAL_CAPACITY, sizeof *kvstore->buckets);
+  if (kvstore->buckets == NULL) {
+    free(kvstore);
+    return NULL;
+  }
+  kvstore->size = 0;
+  kvstore->capacity = INITIAL_CAPACITY;
+  return kvstore;
+}
 
 void kv_destroy(KVStore *kvstore) {
-    if (kvstore == NULL)
-        return;
-    for (size_t i = 0; i < kvstore->size; i++) {
-        free(kvstore->entries[i].key);
-        free(kvstore->entries[i].value);
+  if (kvstore == NULL)
+    return;
+  for (size_t i = 0; i < kvstore->capacity; i++) {
+    KVEntry *current = kvstore->buckets[i];
+    while (current != NULL) {
+      KVEntry *suivant = current->next;
+      free(current->key);
+      free(current->value);
+      free(current);
+      current = suivant;
     }
-    free(kvstore->entries);
-    free(kvstore);
+  }
+  free(kvstore->buckets);
+  free(kvstore);
 }
 
-static KVEntry *kv_find(KVStore *store, const char *key){
-    for (size_t i = 0; i < store->size; i++){
-        if (strcmp(store->entries[i].key, key) == 0){
-            return &store->entries[i];
-        }
+static KVEntry *kv_find(KVStore *store, const char *key, size_t index) {
+  KVEntry *current = store->buckets[index];
+  while (current != NULL) {
+    if (strcmp(current->key, key) == 0) {
+      return current;
     }
-    return NULL;
+    current = current->next;
+  }
+  return NULL;
 }
 
-KVStatus kv_set(KVStore *store, const char *key, const char *value){
-    if (store == NULL || key == NULL || value == NULL) return KV_INVALID_ARGUMENT;
-    KVEntry *entry = kv_find(store, key);
-    if (entry == NULL){
-        KVStatus status = kv_ensure_capacity(store);
-        if (status != KV_OK) return status;
-        char *key_copy = kv_strdup(key);
-        if (key_copy == NULL) return KV_MEMORY_ERROR;
-        store->entries[store->size].key = key_copy;
-        char *value_copy = kv_strdup(value);
-        if (value_copy == NULL) {
-            free(store->entries[store->size].key);
-            return KV_MEMORY_ERROR;
-        }    
-        store->entries[store->size].value = value_copy;
-        store->size++;
-        return KV_OK;
-    } else {
-        char *old_value = entry->value;
-        char *new_value = kv_strdup(value);
-        if (new_value == NULL) return KV_MEMORY_ERROR;
-        free(old_value);
-        entry->value = new_value;
-        return KV_OK;
+KVStatus kv_set(KVStore *store, const char *key, const char *value) {
+  if (store == NULL || key == NULL || value == NULL)
+    return KV_INVALID_ARGUMENT;
+  uint64_t hash;
+  if (!hash_string(key, &hash)) {
+    return KV_HASH_ERROR;
+  }
+  KVStatus status = kv_ensure_capacity(store);
+  if (status != KV_OK) {
+    return status;
+  }
+  size_t index = hash % store->capacity;
+  KVEntry *entry = kv_find(store, key, index);
+
+  if (entry == NULL) {
+    KVEntry *new_entry = malloc(sizeof *new_entry);
+    if (new_entry == NULL)
+      return KV_MEMORY_ERROR;
+    char *key_copy = kv_strdup(key);
+    if (key_copy == NULL) {
+      free(new_entry);
+      return KV_MEMORY_ERROR;
     }
-}
-
-char *kv_get(KVStore *store, const char *key){
-    if (store == NULL || key == NULL) return NULL;
-    KVEntry *entry = kv_find(store, key);
-    if (entry == NULL) return NULL;
-    return entry->value;
-}
-
-
-KVStatus kv_delete(KVStore *store, const char *key){
-    if (store == NULL || key == NULL) return KV_INVALID_ARGUMENT;
-    KVEntry *entry = kv_find(store, key);
-    if (entry == NULL) return KV_KEY_NOT_FOUND;
-    ptrdiff_t removed_idx = entry - store->entries;
-    size_t n_to_move = store->size - removed_idx - 1;
-    free(entry->key);
-    free(entry->value);
-    memmove(&store->entries[removed_idx], &store->entries[removed_idx + 1], n_to_move * sizeof(KVEntry));
-    store->size--;
+    new_entry->key = key_copy;
+    char *value_copy = kv_strdup(value);
+    if (value_copy == NULL) {
+      free(key_copy);
+      free(new_entry);
+      return KV_MEMORY_ERROR;
+    }
+    new_entry->value = value_copy;
+    new_entry->next = store->buckets[index];
+    store->buckets[index] = new_entry;
+    store->size++;
     return KV_OK;
+  } else {
+    char *old_value = entry->value;
+    char *new_value = kv_strdup(value);
+    if (new_value == NULL)
+      return KV_MEMORY_ERROR;
+    free(old_value);
+    entry->value = new_value;
+    return KV_OK;
+  }
 }
 
-void kv_foreach(const KVStore *store, KVCallback callback){
-    if (store == NULL || callback == NULL) return;
-    for (size_t i = 0; i < store->size; i++){
-        callback(store->entries[i].key, store->entries[i].value);
+char *kv_get(KVStore *store, const char *key) {
+  if (store == NULL || key == NULL)
+    return NULL;
+  uint64_t hash;
+  if (!hash_string(key, &hash))
+    return NULL;
+  size_t index = hash % store->capacity;
+  KVEntry *entry = kv_find(store, key, index);
+  if (entry == NULL)
+    return NULL;
+  return entry->value;
+}
+
+KVStatus kv_delete(KVStore *store, const char *key) {
+  if (store == NULL || key == NULL)
+    return KV_INVALID_ARGUMENT;
+  uint64_t hash;
+  if (!hash_string(key, &hash))
+    return KV_HASH_ERROR;
+  size_t index = hash % store->capacity;
+  KVEntry **currentp = &store->buckets[index];
+  while (*currentp != NULL) {
+    if (strcmp((*currentp)->key, key) == 0) {
+      KVEntry *found = *currentp;
+      *currentp = found->next;
+      free(found->key);
+      free(found->value);
+      free(found);
+      store->size--;
+      return KV_OK;
     }
+    currentp = &(*currentp)->next;
+  }
+
+  return KV_KEY_NOT_FOUND;
+}
+
+void kv_foreach(const KVStore *store, KVCallback callback) {
+  if (store == NULL || callback == NULL)
+    return;
+  for (size_t i = 0; i < store->capacity; i++) {
+    KVEntry *current = store->buckets[i];
+    while (current != NULL) {
+      callback(current->key, current->value);
+      current = current->next;
+    }
+  }
 }

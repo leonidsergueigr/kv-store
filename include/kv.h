@@ -3,18 +3,17 @@
 
 #define INITIAL_CAPACITY 4
 
-#include <stdlib.h>
-
 typedef struct KVEntry KVEntry;
 typedef struct KVStore KVStore;
 
 typedef enum {
-    KV_OK,
-    KV_SUCCESS,
-    KV_KEY_NOT_FOUND,
-    KV_EXISTS,
-    KV_MEMORY_ERROR,
-    KV_INVALID_ARGUMENT
+  KV_OK,
+  KV_SUCCESS,
+  KV_KEY_NOT_FOUND,
+  KV_EXISTS,
+  KV_MEMORY_ERROR,
+  KV_INVALID_ARGUMENT,
+  KV_HASH_ERROR
 } KVStatus;
 
 KVStore *kv_create(void);
