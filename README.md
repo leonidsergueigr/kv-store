@@ -74,8 +74,8 @@ kv-store/
 - [x] Interactive CLI
 - [x] Dynamic array-based storage
 - [x] Dynamic memory allocation
-- [ ] Comprehensive unit tests and memory checks
-- [ ] Hash table implementation
+- [x] Comprehensive unit tests and memory checks
+- [x] Hash table implementation
 - [ ] File persistence
 - [ ] Thread safety and concurrency
 - [ ] Performance benchmarks
