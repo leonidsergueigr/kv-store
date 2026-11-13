@@ -76,15 +76,13 @@ kv-store/
 - [x] Dynamic memory allocation
 - [x] Comprehensive unit tests and memory checks
 - [x] Hash table implementation
-- [ ] File persistence
+- [x] File persistence
 - [ ] Thread safety and concurrency
 - [ ] Performance benchmarks
 - [ ] Optional TCP server interface
 
 ## Limitations
 
-- Data is stored only in memory and is lost when the program exits.
-- Lookup currently uses a linear search.
 - Concurrent access is not yet supported.
 
 ## Learning Goals
