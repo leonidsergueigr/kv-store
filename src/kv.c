@@ -1,4 +1,5 @@
 #include "kv.h"
+#include "percist.h"
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -59,7 +60,7 @@ static KVStatus kv_ensure_capacity(KVStore *store) {
   return KV_OK;
 }
 
-static char *kv_strdup(const char *s) {
+char *kv_strdup(const char *s) {
   if (s == NULL)
     return NULL;
   size_t n = strlen(s) + 1;
@@ -193,6 +194,69 @@ KVStatus kv_delete(KVStore *store, const char *key) {
   }
 
   return KV_KEY_NOT_FOUND;
+}
+
+KVStatus kv_save(const KVStore *store, const char *path) {
+  if (store == NULL || path == NULL)
+    return KV_INVALID_ARGUMENT;
+  PersistWriter *w = persist_writer_open(path);
+  if (w == NULL)
+    return KV_IO_ERROR;
+  for (size_t i = 0; i < store->capacity; i++) {
+    KVEntry *current = store->buckets[i];
+    while (current != NULL) {
+      PersistStatus status =
+          persist_write_pair(w, current->key, current->value);
+      if (status != PERSIST_OK) {
+        persist_writer_abort(w);
+        return KV_IO_ERROR;
+      }
+      current = current->next;
+    }
+  }
+  /* persist_writer_commit libere w, succes comme echec : pas d'abort ici. */
+  if (persist_writer_commit(w) != PERSIST_OK) {
+    return KV_IO_ERROR;
+  }
+  return KV_OK;
+}
+
+KVStatus kv_load(KVStore **store, const char *path) {
+  if (store == NULL || path == NULL)
+    return KV_INVALID_ARGUMENT;
+  PersistReader *r = persist_reader_open(path);
+
+  if (r == NULL)
+    return KV_IO_ERROR;
+  KVStore *tmp = kv_create();
+  char *key = NULL;
+  char *value = NULL;
+  while (true) {
+    PersistStatus reader = persist_read_pair(r, &key, &value);
+    if (reader == PERSIST_END) {
+      persist_reader_close(r);
+      kv_destroy(*store);
+      *store = tmp;
+      return KV_OK;
+    }
+    if (reader == PERSIST_IO_ERROR || reader == PERSIST_FORMAT_ERROR) {
+      kv_destroy(tmp);
+      persist_reader_close(r);
+      return KV_IO_ERROR;
+    }
+    KVStatus status = kv_set(tmp, key, value);
+    if (status != KV_OK) {
+      persist_reader_close(r);
+      kv_destroy(tmp);
+      return status;
+    }
+    free(key);
+    free(value);
+    key = NULL;
+    value = NULL;
+  }
+  kv_destroy(*store);
+  *store = tmp;
 }
 
 void kv_foreach(const KVStore *store, KVCallback callback) {

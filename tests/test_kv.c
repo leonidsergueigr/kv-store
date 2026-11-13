@@ -155,7 +155,6 @@ static void test_foreach(void) {
 
     memset(&g_capture, 0, sizeof g_capture);
 
-    /* store vide : aucune iteration */
     kv_foreach(store, capture_entry);
     CHECK(g_capture.calls == 0);
 
@@ -163,7 +162,6 @@ static void test_foreach(void) {
     CHECK(kv_set(store, "b", "2") == KV_OK);
     CHECK(kv_set(store, "c", "3") == KV_OK);
 
-    /* l'ordre suit l'ordre d'insertion */
     kv_foreach(store, capture_entry);
     CHECK(g_capture.calls == 3);
     CHECK(strcmp(g_capture.keys[0], "a") == 0);
@@ -173,7 +171,6 @@ static void test_foreach(void) {
     CHECK(strcmp(g_capture.keys[2], "c") == 0);
     CHECK(strcmp(g_capture.values[2], "3") == 0);
 
-    /* une mise a jour ne change pas le nombre d'entrees */
     CHECK(kv_set(store, "a", "10") == KV_OK);
     kv_foreach(store, capture_entry);
     CHECK(g_capture.calls == 6);
@@ -187,7 +184,6 @@ static void test_foreach_null(void) {
     KVStore *store = kv_create();
     CHECK(store != NULL);
 
-    /* robustesse : ne doit pas planter sur des arguments nuls */
     kv_foreach(NULL, capture_entry);
     kv_foreach(store, NULL);
     kv_foreach(NULL, NULL);
