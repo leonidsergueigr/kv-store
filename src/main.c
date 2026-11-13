@@ -112,6 +112,7 @@ int main(void) {
         fprintf(stderr, "Failed to save database\n");
         break;
       }
+      printf("File saved successfully\n");
       break;
     }
     case CMD_LOAD: {

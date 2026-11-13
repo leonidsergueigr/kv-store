@@ -214,7 +214,6 @@ KVStatus kv_save(const KVStore *store, const char *path) {
       current = current->next;
     }
   }
-  /* persist_writer_commit libere w, succes comme echec : pas d'abort ici. */
   if (persist_writer_commit(w) != PERSIST_OK) {
     return KV_IO_ERROR;
   }
@@ -255,8 +254,6 @@ KVStatus kv_load(KVStore **store, const char *path) {
     key = NULL;
     value = NULL;
   }
-  kv_destroy(*store);
-  *store = tmp;
 }
 
 void kv_foreach(const KVStore *store, KVCallback callback) {
